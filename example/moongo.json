@@ -1,0 +1,9 @@
+{
+    "connections": {
+        "local": {
+            "host": "localhost",
+            "port": 27017,
+            "base": "my-base"
+        }
+    }
+}
