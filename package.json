@@ -1,4 +1,11 @@
 {
+  "name": "moongo",
+  "description": "mongo queries automation tool",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rumkin/moongo.git"
+  },
   "dependencies": {
     "argentum": "^0.4.0",
     "camelcase": "^2.1.1",
@@ -6,5 +13,26 @@
     "mongodb": "^2.1.11",
     "prompt-sync": "^4.0.4"
   },
-  "main": "src/moongo.js"
+  "main": "src/moongo.js",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rumkin/moongo/issues"
+  },
+  "homepage": "https://github.com/rumkin/moongo#readme",
+  "bin": {
+    "moongo": "moongo.js"
+  },
+  "directories": {
+    "example": "example"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mongo",
+    "automation",
+    "cli-util"
+  ],
+  "author": "rumkin"
 }
