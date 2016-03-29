@@ -1,7 +1,11 @@
+'use strict';
+
+const Proxy = require('node-proxy');
+
 module.exports = moongo;
 
 function moongo(db) {
-    return {
+    var moongo = {
         get() {
             return this.collection(...arguments);
         },
@@ -139,6 +143,16 @@ function moongo(db) {
             }
         }
     };
+
+    return Proxy.create({
+        get(obj, prop) {
+            if (! moongo.hasOwnProperty(prop)) {
+                moongo[prop] = moongo.collection(prop);
+            }
+
+            return moongo[prop];
+        }
+    }, moongo);
 };
 
 moongo.utils = require('./utils.js');
