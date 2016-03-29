@@ -1,10 +1,15 @@
-module.exports = function(db) {
+module.exports = moongo;
+
+function moongo(db) {
     return {
+        get() {
+            return this.collection(...arguments);
+        },
         collection(name) {
             var collection = db.collection(name);
 
             return {
-                find(params) {
+                exec(params) {
                     return new Promise((resolve, reject) => {
                         var args = [params.where];
                         if (params.select) {
@@ -33,6 +38,17 @@ module.exports = function(db) {
                         });
                     });
                 },
+                find(query, select) {
+                    return new Promise((resolve, reject) => {
+                        collection.find(query, select).toArray((err, docs) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve(docs);
+                            }
+                        });
+                    });
+                },
                 findOne(params) {
                     var args = [...arguments];
                     return new Promise((resolve, reject) => {
@@ -47,6 +63,17 @@ module.exports = function(db) {
                         )
 
                         collection.findOne(...args);
+                    });
+                },
+                count(query) {
+                    return new Promise((resolve, reject) => {
+                        collection.count(query, (err, docs) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve(docs);
+                            }
+                        });
                     });
                 },
                 update(query, update, options) {
@@ -113,3 +140,5 @@ module.exports = function(db) {
         }
     };
 };
+
+moongo.utils = require('./utils.js');

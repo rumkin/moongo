@@ -9,10 +9,12 @@ const camelcase = require('camelcase');
 const Actioner = require('../lib/bin-utils.js');
 const attrParser = require('../lib/attr-parser.js');
 const functionArgs = require('../lib/fn-args.js');
+const lookup = require('../lib/lookup.js');
 const mongo = require('mongodb');
 const moongo = require('../');
 const fs = require('fs');
 const prompt = require('prompt-sync')();
+const objectPath = require('object-path');
 
 const argv = process.argv.slice(2);
 const args = argentum.parse(argv, {
@@ -20,7 +22,9 @@ const args = argentum.parse(argv, {
         debug: false,
     },
     aliases: {
-        d: 'debug'
+        d: 'debug',
+        s: 'stdin',
+        l: 'list',
     }
 });
 
@@ -53,10 +57,12 @@ var action = camelcase(argv.shift() || 'help');
 Actioner.new()
 .add('run', function (conn, script) {
     var scope = {};
+    var stdin = '';
+
     [...arguments].slice(2).forEach(
         attrs => attrParser.parse(attrs)
         .forEach(attr => {
-            scope[camelcase(attr.name)] = attr.value;
+            objectPath.set(scope, attr.name, attr.value);
         })
     );
 
@@ -67,7 +73,7 @@ Actioner.new()
             base: 'test',
         }, config.connections[conn]);
 
-        if (params.confirm && prompt('Confirm query [Y/n]: ') !== 'Y') {
+        if (! args.stdin && params.confirm && prompt('Confirm query [Y/n]: ') !== 'Y') {
             reject(new Error('interrupted'));
             return;
         }
@@ -83,9 +89,30 @@ Actioner.new()
         });
     }))
     .then(db => {
+        if (! args.stdin) {
+            return db;
+        }
+
+        return new Promise(resolve => {
+            process.stdin.resume();
+            process.stdin.on('data', (chunk) => stdin += chunk);
+            process.stdin.on('end', () => {
+                process.stdin.pause();
+                resolve(db);
+            })
+        });
+    })
+    .then(db => {
+        scope.utils = moongo.utils;
         scope.$db = db;
         scope.$api = moongo(db);
         scope.$prompt = prompt;
+        scope.$confirm = function(msg) {
+            var answer = $prompt(msg + ' [Y/n]: ');
+            return answer === 'Y';
+        };
+        scope.$args = args;
+        scope.$stdin = stdin;
 
         var scriptPath, method;
         if (script.includes('#')) {
@@ -101,13 +128,28 @@ Actioner.new()
 
         if (method) {
             fn = submodule[method];
+            if (typeof fn !== 'function') {
+                throw new Error(`Method ${method} is not a function`);
+            }
         }
         else {
             fn = submodule;
+            if (typeof fn !== 'function') {
+                throw new Error(`Module is not a function`);
+            }
         }
 
+        var scriptDir = path.dirname(scriptPath);
+        var exts = lookup.allSync(scriptDir, '_moongo.js');
+        exts.forEach(extPath => {
+            Object.assign(
+                scope,
+                require(extPath)
+            );
+        });
+
         var fnArgs = functionArgs(fn);
-        return fn(...fnArgs.map(name => scope[name]));
+        return fn.call(submodule, ...fnArgs.map(name => scope[name]));
     });
 })
 .add('help', () => {
